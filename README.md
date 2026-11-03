@@ -1,4 +1,8 @@
+</> Markdown
+
 # 🎸 Guitar Practice Trainer
+
+🎸 **[Launch the Guitar Practice Trainer](https://patams22.github.io/guitar-trainer-v7/)**
 
 **A free, interactive practice tool for guitarists looking to improve fretboard fluency, music theory knowledge, and musical recall.**
 
