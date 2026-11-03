@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0e1726">
+  <meta name="description" content="Randomized guitar practice for scales, modes, triads, four-part chords, and arpeggios, with a metronome and practice guide.">
+  <title>Guitar Practice Trainer</title>
+  <style>
+    :root {color-scheme:dark; font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#0e1726; color:#f3f6fb}
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;padding:32px 16px;background:radial-gradient(circle at 50% 0%,#1b3150,#0e1726 65%)}
+    main{max-width:1120px;margin:auto} .eyebrow{color:#a5b9d5;text-transform:uppercase;letter-spacing:.16em;font-size:.75rem;font-weight:750}
+    h1{font-size:clamp(2rem,5vw,3rem);line-height:1.12;margin:.5rem 0 0} .intro{color:#b5c4d9;line-height:1.5;margin:.8rem 0 1.5rem}
+    .panel{background:#162337;border:1px solid #33465d;border-radius:20px;padding:clamp(18px,4vw,32px);box-shadow:0 18px 48px #03091655}
+    .results{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:18px}
+    .tile{background:#21334d;border:1px solid #3b516f;border-radius:16px;padding:12px 8px;text-align:center;min-width:0;transition:opacity .2s,background .2s,border-color .2s} .tile .label{font-size:.89rem;color:#b5c4d9}
+    .value{font-size:clamp(1.25rem,2.5vw,2.35rem);font-weight:780;line-height:1.15;margin:.5rem 0;white-space:nowrap}.tile[data-reel="chord"] .value{font-size:clamp(1.2rem,2.2vw,2rem)}
+    button,select{font:inherit} button{border:0;cursor:pointer;border-radius:12px;padding:15px 18px;font-weight:750}
+    button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #ffc66d;outline-offset:3px}
+    .primary{background:#f7ba63;color:#16202e;width:100%;font-size:1.1rem}.primary:hover{background:#ffd48e}
+    .secondary{background:#2c4160;color:#fff;border:1px solid #537092}.secondary:hover{background:#3c5678}
+    .settings{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px}
+    label{display:block;margin-bottom:9px;color:#d6e1f0;font-weight:650;font-size:.9rem}
+    select{width:100%;background:#0d1929;color:#fff;border:1px solid #59708b;border-radius:10px;padding:12px}
+    .helper{font-size:.86rem;color:#a6b9d2;margin-top:12px}
+    .visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+    .sound-setting{display:flex;align-items:center;justify-content:flex-end;gap:9px;margin:-6px 0 17px;color:#d6e1f0;font-size:.9rem}
+    .sound-setting label{margin:0;cursor:pointer}.sound-setting input{width:17px;height:17px;accent-color:#f7ba63;cursor:pointer}
+    .reel-window{height:1.15em;overflow:hidden;position:relative;line-height:1.15}
+    .reel-strip{display:flex;flex-direction:column;will-change:transform}
+    .reel-cell{height:1.15em;display:flex;justify-content:center;align-items:center;flex:none}
+    .tile.spinning{border-color:#f7ba63;box-shadow:0 0 0 1px #f7ba6355,0 0 23px #f7ba6324}
+    .tile.stopped{animation:reel-stop .42s ease-out}
+    @keyframes reel-stop{0%{box-shadow:0 0 0 1px #f7ba63,0 0 30px #f7ba6380}100%{box-shadow:none}}
+    button:disabled,select:disabled{opacity:.65;cursor:wait}
+    .section-heading{font-size:1rem;margin:4px 0 11px;color:#e5edf8}
+    .keys-box{background:#101d30;border:1px solid #344b67;border-radius:14px;padding:16px;margin-bottom:20px}
+    .keys-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+    .keys-head h2{margin:0;font-size:1rem}
+    .key-actions{display:flex;gap:8px}.small-button{padding:7px 10px;font-size:.79rem}
+    .key-list{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px}
+    .key-option{display:flex;align-items:center;justify-content:center;gap:5px;margin:0;border:1px solid #415977;background:#20344d;border-radius:8px;padding:9px 4px;cursor:pointer;font-size:.78rem;white-space:nowrap}
+    .key-option input{accent-color:#f7ba63;min-width:15px;min-height:15px}
+    .reel-toggle{display:flex;align-items:center;justify-content:center;gap:6px;min-height:36px;margin:0 0 6px;cursor:pointer;line-height:1.2;font-size:.78rem}
+    .reel-toggle input{accent-color:#f7ba63;min-width:16px;min-height:16px;cursor:pointer}
+    .tile.is-off{opacity:.32;background:#142238;border-color:#33445b}
+    .tile.is-off .reel-toggle{opacity:1}
+    .reel-caption{color:#a6b9d2;font-size:.82rem;line-height:1.4;margin:-6px 0 16px}
+    .notice{color:#ffd48e;font-size:.87rem;margin:7px 0 14px;min-height:1.1em}
+
+    /* Collapsible independent metronome */
+    .metronome{margin-top:20px;border:1px solid #344b67;border-radius:16px;background:#101d30;overflow:hidden}
+    .metronome summary{padding:17px 18px;font-weight:750;cursor:pointer;list-style-position:inside;color:#e5edf8}
+    .metronome summary:focus-visible{outline:3px solid #ffc66d;outline-offset:-4px}
+    .metronome-body{padding:0 18px 20px}
+    .tempo-readout{text-align:center;font-size:2.5rem;font-weight:800;font-variant-numeric:tabular-nums;margin:4px 0 10px}
+    .tempo-readout span{font-size:1rem;font-weight:600;color:#b5c4d9}
+    #tempo-slider{width:100%;accent-color:#f7ba63;cursor:pointer}
+    .tempo-actions{display:flex;justify-content:space-between;gap:10px;margin:12px 0 20px}
+    .tempo-actions button{padding:10px 14px;flex:1}
+    .metro-settings{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+    .metro-settings fieldset{border:0;padding:0;margin:0;min-width:0}
+    .metro-settings legend{font-weight:700;font-size:.9rem;margin-bottom:9px;color:#d6e1f0}
+    .metro-settings label{display:flex;align-items:center;gap:8px;cursor:pointer;margin:9px 0;font-weight:500}
+    .metro-settings input{accent-color:#f7ba63}
+    .beat-display{display:flex;justify-content:center;gap:15px;padding:17px;background:#192b42;border-radius:12px;margin-bottom:14px}
+    .beat-light{width:19px;height:19px;border-radius:50%;background:#66768b;transition:background .06s,box-shadow .06s}
+    .beat-light.downbeat{background:#967443}
+    .beat-light.lit{background:#e7eef9;box-shadow:0 0 0 5px #e7eef92a}
+    .beat-light.downbeat.lit{background:#f7ba63;box-shadow:0 0 0 5px #f7ba6340}
+    .metro-start{width:100%}
+    .metro-start.playing{background:#8d3f4c;border-color:#d36c7b}
+    .metro-start.playing:hover{background:#a24b5b}
+    .metro-note{margin:10px 0 0;color:#a6b9d2;font-size:.8rem;text-align:center}
+    @media(max-width:420px){.tempo-actions{gap:5px}.tempo-actions button{padding:9px 7px;font-size:.81rem}.metro-settings{gap:10px}}
+    @media(max-width:930px){.results{grid-template-columns:repeat(3,minmax(0,1fr))}.key-list{grid-template-columns:repeat(6,minmax(0,1fr))}}
+    @media(max-width:600px){.results{grid-template-columns:repeat(2,minmax(0,1fr))}.key-list{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(prefers-reduced-motion:reduce){.tile.stopped{animation:none}}
+    footer{font-size:.83rem;color:#98abc6;margin:20px 0;text-align:center} [hidden]{display:none!important}
+    @media(max-width:540px){.settings{grid-template-columns:1fr}.panel{border-radius:16px}.tile{padding:14px}}
+
+    /* Self-contained practice guide; native details elements need no JavaScript. */
+    .practice-guide{margin-top:20px;border:1px solid #344b67;border-radius:16px;background:#101d30;overflow:hidden}
+    .practice-guide>summary{padding:17px 18px;font-weight:750;cursor:pointer;color:#e5edf8}
+    .practice-guide summary:focus-visible{outline:3px solid #ffc66d;outline-offset:-4px}
+    .guide-content{padding:0 18px 20px;line-height:1.55;color:#d6e1f0}
+    .guide-intro{color:#b5c4d9;max-width:74ch}
+    .guide-section{border:1px solid #3b516f;border-radius:12px;margin-top:12px;background:#192b42;overflow:hidden}
+    .guide-section>summary{cursor:pointer;padding:13px 15px;font-weight:700;color:#f3f6fb}
+    .guide-section-body{padding:0 15px 16px}
+    .guide-section-body h3{font-size:1rem;margin:15px 0 5px;color:#f4d4a4}
+    .guide-section-body p{margin:8px 0}
+    .guide-steps{padding-left:23px;margin:7px 0 12px}
+    .guide-steps li{margin:5px 0}
+    .guide-example{background:#223753;border-left:3px solid #f7ba63;padding:11px 13px;margin:10px 0 14px;border-radius:0 10px 10px 0}
+    .guide-example strong{color:#ffcf8a}
+    .guide-note{color:#b5c4d9;font-size:.9rem}
+    .guide-erratum{border:1px solid #927044;background:#332a25;padding:11px 13px;border-radius:10px;margin-top:12px;color:#ffe2b7;font-size:.88rem}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">Guitar practice • Fretboard training</div>
+    <h1>Guitar Practice Randomizer</h1>
+    <p class="intro">Choose your keys and enable the practice reels you want. Only enabled reels spin; the others remain visible but faded.</p>
+    <section class="panel" aria-label="Randomizer">
+      <div class="settings">
+        <div><label for="scale">Parent scale</label><select id="scale"><option value="major">Major</option><option value="minor">Natural minor</option></select></div>
+        <div><label for="accidentals">Root note options</label><select id="accidentals"><option value="all">Naturals, sharps &amp; flats</option><option value="natural">Naturals only</option><option value="sharps">Naturals &amp; sharps</option><option value="flats">Naturals &amp; flats</option></select></div>
+      </div>
+      <section class="keys-box" aria-label="Practice key selection">
+        <div class="keys-head"><h2>Practice keys</h2><div class="key-actions"><button type="button" class="secondary small-button" id="keys-all">Select all</button><button type="button" class="secondary small-button" id="keys-none">Clear all</button></div></div>
+        <div id="key-list" class="key-list"></div>
+        <p class="helper">Choose pitch classes here; the Root note options dropdown above decides whether sharps, flats, or natural spellings are allowed.</p>
+      </section>
+      <div class="sound-setting"><input type="checkbox" id="sound" checked><label for="sound">Play sounds</label></div>
+      <h2 class="section-heading">Practice reels</h2>
+      <p class="reel-caption">Toggle each reel on or off. Disabled reels keep their last result and do not spin.</p>
+      <div class="results" id="results" aria-live="off">
+        <div class="tile" id="root-tile" data-reel="root"><label class="reel-toggle"><input type="checkbox" data-enable="root" checked>Root note</label><div class="value" id="root">B♭</div></div>
+        <div class="tile" id="degree-tile" data-reel="degree"><label class="reel-toggle"><input type="checkbox" data-enable="degree" checked>Scale degree</label><div class="value" id="degree">3</div></div>
+        <div class="tile is-off" id="mode-tile" data-reel="mode"><label class="reel-toggle"><input type="checkbox" data-enable="mode">Mode</label><div class="value" id="mode">Ionian</div></div>
+        <div class="tile is-off" id="quality-tile" data-reel="quality"><label class="reel-toggle"><input type="checkbox" data-enable="quality">Triad quality</label><div class="value" id="quality">Major</div></div>
+        <div class="tile is-off" id="inversion-tile" data-reel="inversion"><label class="reel-toggle"><input type="checkbox" data-enable="inversion">Triad inversion</label><div class="value" id="inversion">Root</div></div>
+        <div class="tile is-off" id="chord-tile" data-reel="chord"><label class="reel-toggle"><input type="checkbox" data-enable="chord">Four-part chord shape</label><div class="value" id="chord">Maj7</div></div>
+      </div>
+      <p id="notice" class="notice" role="status" aria-live="polite"></p>
+      <div id="spin-status" role="status" class="visually-hidden" aria-live="polite"></div>
+      <button class="primary" id="roll" type="button">🎲 Roll again</button>
+      <details class="metronome" id="metronome">
+        <summary>Metronome</summary>
+        <div class="metronome-body">
+          <div class="tempo-readout"><output id="tempo-value" for="tempo-slider">60</output> <span>BPM</span></div>
+          <label class="visually-hidden" for="tempo-slider">Tempo in beats per minute</label>
+          <input id="tempo-slider" type="range" min="40" max="200" step="1" value="60">
+          <div class="tempo-actions">
+            <button class="secondary" type="button" id="tempo-minus">− 5</button>
+            <button class="secondary" type="button" id="tempo-reset">Reset to 60</button>
+            <button class="secondary" type="button" id="tempo-plus">+ 5</button>
+          </div>
+          <div class="metro-settings">
+            <fieldset><legend>Time signature</legend>
+              <label><input type="radio" name="meter" value="4" checked>4/4</label>
+              <label><input type="radio" name="meter" value="3">3/4</label>
+              <label><input type="radio" name="meter" value="2">2/4</label>
+            </fieldset>
+            <fieldset><legend>Click sound</legend>
+              <label><input type="radio" name="click-tone" value="classic" checked>Classic click</label>
+              <label><input type="radio" name="click-tone" value="woodblock">Woodblock</label>
+            </fieldset>
+          </div>
+          <div class="beat-display" id="beat-display" aria-label="Beat indicator"></div>
+          <button class="secondary metro-start" type="button" id="metro-start" aria-pressed="false">▶ Start metronome</button>
+          <p class="metro-note">Runs independently while you roll practice exercises.</p>
+          <p id="metro-status" class="visually-hidden" role="status" aria-live="polite"></p>
+        </div>
+      </details>
+      <details class="practice-guide" id="practice-guide">
+        <summary>Practice guide &amp; examples</summary>
+        <div class="guide-content">
+          <p class="guide-intro">This guitar trainer helps you practice scales, modes, triads, four-part chords, and arpeggios. Choose the elements you want to randomize, then use each result to practice immediate recall on the fretboard.</p>
+          <p class="guide-note">Start by selecting your practice keys and root-note spelling options. Enable only the reels named in an exercise, then click <strong>Roll again</strong>. The examples below show possible results, not predetermined rolls.</p>
+
+          <details class="guide-section">
+            <summary>Scales &amp; modes</summary>
+            <div class="guide-section-body">
+              <h3>Simple scales</h3>
+              <ol class="guide-steps"><li>Enable <strong>Root note</strong> only.</li><li>Click <strong>Roll again</strong>.</li><li>Play the major scale starting on the indicated root note.</li></ol>
+              <h3>Modes from scale degrees</h3>
+              <ol class="guide-steps"><li>Enable <strong>Root note</strong> and <strong>Scale degree</strong>.</li><li>Click <strong>Roll again</strong>.</li><li>Find the indicated degree of the selected parent scale and play the appropriate mode shape starting on that note.</li></ol>
+              <div class="guide-example"><strong>Example:</strong> Root note <strong>C</strong> + scale degree <strong>5</strong> (C major parent scale) → play <strong>G Mixolydian</strong>.</div>
+              <h3>Modes from a named root</h3>
+              <ol class="guide-steps"><li>Enable <strong>Root note</strong> and <strong>Mode</strong>.</li><li>Click <strong>Roll again</strong>.</li><li>Play the indicated mode starting on the indicated root.</li></ol>
+              <div class="guide-example"><strong>Example:</strong> Root note <strong>C</strong> + mode <strong>Phrygian</strong> → play <strong>C Phrygian</strong>.</div>
+            </div>
+          </details>
+
+          <details class="guide-section">
+            <summary>Triads</summary>
+            <div class="guide-section-body">
+              <h3>Ascending &amp; descending</h3>
+              <ol class="guide-steps"><li>Enable <strong>Root note</strong> and <strong>Triad quality</strong>.</li><li>Click <strong>Roll again</strong>.</li><li>Play the indicated triad ascending and descending across the neck.</li></ol>
+              <div class="guide-example"><strong>Example:</strong> Root note <strong>B♭</strong> + quality <strong>Aug</strong> → play a B♭ augmented triad ascending and descending across the neck.</div>
+              <h3>Triad inversions within a scale exercise</h3>
+              <ol class="guide-steps"><li>Enable <strong>Root note</strong>, <strong>Triad quality</strong>, and <strong>Triad inversion</strong>.</li><li>Click <strong>Roll again</strong>.</li><li>Practice the major scale with the movable triad of the indicated quality and inversion, as described in the example.</li></ol>
+              <div class="guide-example"><strong>Example:</strong> Root note <strong>F</strong> + quality <strong>Aug</strong> + inversion <strong>2nd</strong> → play an F major scale with a movable F augmented triad in second inversion.</div>
+            </div>
+          </details>
+
+          <details class="guide-section">
+            <summary>Arpeggios &amp; four-part chords</summary>
+            <div class="guide-section-body">
+              <h3>Four-part chord arpeggios</h3>
+              <ol class="guide-steps"><li>Enable <strong>Root note</strong> and <strong>Four-part chord shape</strong>.</li><li>Click <strong>Roll again</strong>.</li><li>Play the indicated chord as an arpeggio beginning on the root.</li></ol>
+              <div class="guide-example"><strong>Example:</strong> Root note <strong>C</strong> + chord <strong>Min7♭5</strong> → play C minor seven flat five across one octave:<p><strong>1 — C · ♭3 — E♭ · ♭5 — G♭ · ♭7 — B♭ · 1 — C</strong></p></div>
+              <div class="guide-erratum"><strong>Correction to the uploaded example:</strong> The document lists A♭ for the ♭7 of C. The correct ♭7 is B♭; A♭ is the ♭6. The example above reflects this correction.</div>
+            </div>
+          </details>
+        </div>
+      </details>
+
+    </section>
+    <footer>Practice tip: choose the keys required by your assignment, then activate only the skills you want to drill.</footer>
+  </main>
+  <script>
+    "use strict";
+    const NOTES = ["C","C♯","D♭","D","D♯","E♭","E","F","F♯","G♭","G","G♯","A♭","A","A♯","B♭","B"];
+    const MODES = ["Ionian","Dorian","Phrygian","Lydian","Mixolydian","Aeolian","Locrian"];
+    const QUALITIES = ["Major","Minor","Aug","Dim"];
+    const INVERSIONS = ["Root","1st","2nd"];
+    const CHORDS = ["Maj7","Min7","Dom7","Min7♭5","7sus4","7♯5","Dim7","Maj6","Min6","Min9","9","7♭9","7♯9","13"];
+    const REELS = ["root","degree","mode","quality","inversion","chord"];
+    const KEY_LABELS = ["C","C♯/D♭","D","D♯/E♭","E","F","F♯/G♭","G","G♯/A♭","A","A♯/B♭","B"];
+    function pitchClass(note){return (PITCHES[note[0]]+(note.includes("♯")?1:note.includes("♭")?-1:0)+12)%12;}
+    const PITCHES = {C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+    const $ = id => document.getElementById(id);
+    let root="B♭", degree=3, spinning=false;
+    const values={root,degree,mode:"Ionian",quality:"Major",inversion:"Root",chord:"Maj7"};
+    const enabled={root:true,degree:true,mode:false,quality:false,inversion:false,chord:false};
+    const selectedKeys=new Set(Array.from({length:12},(_,i)=>i));
+    const POOLS={degree:[1,2,3,4,5,6,7],mode:MODES,quality:QUALITIES,inversion:INVERSIONS,chord:CHORDS};
+    function rootPool(){
+      const option=$("accidentals").value;
+      return NOTES.filter(n=>selectedKeys.has(pitchClass(n))&&(option==="all"||option==="natural"&&!/[♯♭]/.test(n)||option==="sharps"&&!n.includes("♭")||option==="flats"&&!n.includes("♯")));
+    }
+    function updateAvailability(){
+      const active=REELS.filter(id=>enabled[id]);
+      const problem=active.length===0?"Enable at least one practice reel.":enabled.root&&rootPool().length===0?"No root notes match the selected keys and spelling filter. Change your key selection or Root note options.":"";
+      $("notice").textContent=problem;
+      $("roll").disabled=spinning||Boolean(problem);
+      return !problem;
+    }
+    function setEnabled(id,on){
+      enabled[id]=on;
+      $(id+"-tile").classList.toggle("is-off",!on);
+      if(!spinning)updateAvailability();
+    }
+    function createKeyPicker(){
+      KEY_LABELS.forEach((name,pitch)=>{
+        const label=document.createElement("label");label.className="key-option";
+        const cb=document.createElement("input");cb.type="checkbox";cb.checked=true;cb.value=String(pitch);cb.dataset.key=String(pitch);
+        const span=document.createElement("span");span.textContent=name;
+        cb.addEventListener("change",()=>{if(cb.checked)selectedKeys.add(pitch);else selectedKeys.delete(pitch);updateAvailability();});
+        label.append(cb,span);$("key-list").append(label);
+      });
+    }
+    function changeAllKeys(checked){
+      document.querySelectorAll("[data-key]").forEach(cb=>{cb.checked=checked;});
+      selectedKeys.clear();if(checked)for(let i=0;i<12;i++)selectedKeys.add(i);
+      updateAvailability();
+    }
+    let audioContext=null;
+    function render(){
+      if(!spinning){for(const id of REELS)$(id).textContent=String(values[id]);}
+    }
+    // Web Audio: lightweight synthesized plucked-string tones, no external audio files.
+    // The root reel plays lower-pitched plucks; the degree reel plays higher plucks.
+    // Stop notes ring a little longer and match the final reel value.
+    function guitarPluck(reel, value, isStop=false){
+      if(!$('sound').checked)return;
+      try{
+        if(!audioContext) audioContext=new (window.AudioContext||window.webkitAudioContext)();
+        if(audioContext.state==='suspended') audioContext.resume();
+        const ctx=audioContext, t=ctx.currentTime;
+        let frequency;
+        if(reel==='root'){
+          const pitch=(PITCHES[value[0]]+(value.includes('♯')?1:value.includes('♭')?-1:0)+12)%12;
+          frequency=130.8128*Math.pow(2,pitch/12); // C3 and above
+        }else{
+          // A consistent set of guitar-like ticks for categorical reels.
+          const d=reel==='degree'?Number(value):Math.max(1,(REELS.indexOf(reel)*2)+1);
+          frequency=196*Math.pow(2,(d-1)*2/12);
+        }
+        const duration=isStop?.7:.12;
+        const output=ctx.createGain();
+        const filter=ctx.createBiquadFilter();
+        filter.type='lowpass';filter.frequency.value=isStop?2300:1400;
+        output.gain.setValueAtTime(.0001,t);
+        output.gain.exponentialRampToValueAtTime(isStop?.13:.065,t+.007);
+        output.gain.exponentialRampToValueAtTime(.0001,t+duration);
+        filter.connect(output);output.connect(ctx.destination);
+        // Quick-decaying harmonics approximate the attack and warmth of a picked guitar string.
+        [[1,1],[2,.30],[3,.13]].forEach(([harmonic,level])=>{
+          const osc=ctx.createOscillator(),g=ctx.createGain();
+          osc.type='sine';osc.frequency.setValueAtTime(frequency*harmonic,t);
+          g.gain.value=level;
+          osc.connect(g);g.connect(filter);
+          osc.start(t);osc.stop(t+duration+.02);
+        });
+      }catch(e){/* If audio is unavailable the visual animation still works. */}
+    }
+    const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+    function displayReel(id,value){
+      const el=$(id),win=document.createElement("div"),strip=document.createElement("div");
+      win.className="reel-window";strip.className="reel-strip";
+      const cell=document.createElement("div");cell.className="reel-cell";cell.textContent=value;
+      strip.append(cell);win.append(strip);el.replaceChildren(win);
+      return {el,strip};
+    }
+    async function spinReel(id,tileId,pool,finalValue,steps){
+      const tile=$(tileId),initial=String(values[id]);
+      const {strip}=displayReel(id,initial);
+      tile.classList.add("spinning");tile.classList.remove("stopped");
+      for(let i=0;i<steps;i++){
+        let next=i===steps-1?String(finalValue):String(pool[Math.floor(Math.random()*pool.length)]);
+        const nextCell=document.createElement("div");nextCell.className="reel-cell";nextCell.textContent=next;
+        strip.append(nextCell);
+        void strip.offsetHeight; // Ensure each new reel frame is laid out before scrolling.
+        const duration=i<steps-5?65:65+(i-(steps-5))*29;
+        strip.style.transition=`transform ${duration}ms cubic-bezier(.32,.01,.65,1)`;
+        strip.style.transform="translateY(-50%)";
+        guitarPluck(id,next,false);
+        await wait(duration+10);
+        strip.style.transition="none";strip.style.transform="translateY(0)";
+        strip.firstChild.remove();
+      }
+      tile.classList.remove("spinning");tile.classList.add("stopped");
+      $(id).textContent=String(finalValue);
+      guitarPluck(id,String(finalValue),true);
+    }
+    async function roll(){
+      if(spinning||!updateAvailability())return;
+      spinning=true;render();
+      $("roll").disabled=true;
+      $("scale").disabled=true;$("accidentals").disabled=true;
+      document.querySelectorAll('[data-key],[data-enable],#keys-all,#keys-none').forEach(el=>el.disabled=true);
+      $("spin-status").textContent="Reels spinning";
+      const active=REELS.filter(id=>enabled[id]);
+      const next={};
+      const jobs=active.map((id,i)=>{
+        const pool=id==="root"?rootPool():POOLS[id];
+        next[id]=pool[Math.floor(Math.random()*pool.length)];
+        return {id,pool,steps:12+(i%3)*3};
+      });
+      const reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if(!reduced)await Promise.all(jobs.map(job=>spinReel(job.id,job.id+"-tile",job.pool,next[job.id],job.steps)));
+      for(const id of active)values[id]=next[id];
+      root=values.root;degree=Number(values.degree);
+      spinning=false;
+      $("scale").disabled=false;$("accidentals").disabled=false;
+      document.querySelectorAll('[data-key],[data-enable],#keys-all,#keys-none').forEach(el=>el.disabled=false);
+      render();updateAvailability();
+      $("spin-status").textContent=active.map(id=>`${id}: ${values[id]}`).join(", ");
+    }
+    $("roll").addEventListener("click",roll);
+    $("scale").addEventListener("change",render);
+    $("accidentals").addEventListener("change",()=>{updateAvailability();if(enabled.root&&rootPool().length)roll();});
+    $("keys-all").addEventListener("click",()=>changeAllKeys(true));
+    $("keys-none").addEventListener("click",()=>changeAllKeys(false));
+    document.querySelectorAll("[data-enable]").forEach(cb=>cb.addEventListener("change",()=>setEnabled(cb.dataset.enable,cb.checked)));
+    createKeyPicker();updateAvailability();
+    document.addEventListener("keydown",event=>{if(event.target.tagName==="SELECT")return;if(event.code==="Space"&&event.target.tagName==="BODY"){event.preventDefault();roll()}});
+    render();
+
+    // Audio-clock metronome. Audio notes are scheduled ahead of the UI to minimize drift.
+    const METRO_STORAGE="guitarTrainerMetronomeBpm";
+    let metroBpm=60,metroMeter=4,metroSound="classic",metroPlaying=false;
+    let metroNextTime=0,metroBeat=0,metroTimer=null,metroGeneration=0;
+    const metroVisualTimers=new Set();
+    const metroVoices=new Set();
+    try{
+      const saved=Number(localStorage.getItem(METRO_STORAGE));
+      if(Number.isInteger(saved)&&saved>=40&&saved<=200)metroBpm=saved;
+    }catch(e){/* Local storage can be unavailable in private browsing. */}
+    function setTempo(newBpm){
+      metroBpm=Math.max(40,Math.min(200,Math.round(newBpm)));
+      $("tempo-slider").value=metroBpm;
+      $("tempo-value").textContent=metroBpm;
+      try{localStorage.setItem(METRO_STORAGE,String(metroBpm));}catch(e){}
+      if(metroPlaying)restartMetroClock();
+    }
+    function drawBeatLights(){
+      const group=$("beat-display");group.replaceChildren();
+      for(let beat=0;beat<metroMeter;beat++){
+        const dot=document.createElement("span");
+        dot.className="beat-light"+(beat===0?" downbeat":"");
+        dot.setAttribute("aria-hidden","true");
+        group.append(dot);
+      }
+    }
+    function lightBeat(beat){
+      [...$("beat-display").children].forEach((dot,i)=>dot.classList.toggle("lit",i===beat));
+    }
+    function clearMetroVisuals(){
+      for(const timer of metroVisualTimers)clearTimeout(timer);
+      metroVisualTimers.clear();lightBeat(-1);
+    }
+    function stopMetroVoices(){
+      for(const voice of metroVoices){
+        try{voice.stop();}catch(e){}
+      }
+      metroVoices.clear();
+    }
+    function scheduleMetroClick(time,downbeat){
+      try{
+        const ctx=audioContext;
+        const oscillator=ctx.createOscillator();
+        const gain=ctx.createGain();
+        const wood=metroSound==="woodblock";
+        oscillator.type=wood?"triangle":"sine";
+        oscillator.frequency.setValueAtTime(wood?(downbeat?820:580):(downbeat?1500:950),time);
+        if(wood)oscillator.frequency.exponentialRampToValueAtTime(downbeat?420:300,time+.042);
+        const duration=wood?.075:.035;
+        gain.gain.setValueAtTime(.0001,time);
+        gain.gain.exponentialRampToValueAtTime(downbeat?.22:.13,time+.003);
+        gain.gain.exponentialRampToValueAtTime(.0001,time+duration);
+        oscillator.connect(gain);gain.connect(ctx.destination);
+        oscillator.onended=()=>{metroVoices.delete(oscillator);oscillator.disconnect();gain.disconnect();};
+        metroVoices.add(oscillator);
+        oscillator.start(time);oscillator.stop(time+duration+.005);
+      }catch(e){/* Visual metronome continues if sound is unavailable. */}
+    }
+    function scheduleMetroBeat(beat,time,generation){
+      scheduleMetroClick(time,beat===0);
+      const delay=Math.max(0,(time-audioContext.currentTime)*1000);
+      const timer=setTimeout(()=>{
+        metroVisualTimers.delete(timer);
+        if(metroPlaying&&generation===metroGeneration)lightBeat(beat);
+      },delay);
+      metroVisualTimers.add(timer);
+    }
+    function metroScheduler(){
+      if(!metroPlaying||!audioContext)return;
+      const generation=metroGeneration;
+      while(metroNextTime<audioContext.currentTime+.12){
+        scheduleMetroBeat(metroBeat,metroNextTime,generation);
+        metroNextTime+=60/metroBpm;
+        metroBeat=(metroBeat+1)%metroMeter;
+      }
+    }
+    function restartMetroClock(){
+      if(metroTimer!==null){clearInterval(metroTimer);metroTimer=null;}
+      metroGeneration++;
+      clearMetroVisuals();stopMetroVoices();
+      if(!metroPlaying)return;
+      metroBeat=0;
+      metroNextTime=audioContext.currentTime+.055;
+      metroScheduler();
+      metroTimer=setInterval(metroScheduler,25);
+    }
+    async function toggleMetronome(){
+      if(metroPlaying){
+        metroPlaying=false;restartMetroClock();
+      }else{
+        try{
+          if(!audioContext)audioContext=new (window.AudioContext||window.webkitAudioContext)();
+          if(audioContext.state==="suspended")await audioContext.resume();
+          if(audioContext.state!=="running")throw Error("Audio unavailable");
+        }catch(e){$("metro-status").textContent="Audio is unavailable. Check browser audio permissions.";return;}
+        metroPlaying=true;restartMetroClock();
+      }
+      $("metro-start").textContent=metroPlaying?"■ Stop metronome":"▶ Start metronome";
+      $("metro-start").classList.toggle("playing",metroPlaying);
+      $("metro-start").setAttribute("aria-pressed",String(metroPlaying));
+      $("metro-status").textContent=metroPlaying?`Metronome running at ${metroBpm} beats per minute.`:"Metronome stopped.";
+    }
+    $("tempo-slider").addEventListener("input",e=>setTempo(Number(e.target.value)));
+    $("tempo-minus").addEventListener("click",()=>setTempo(metroBpm-5));
+    $("tempo-plus").addEventListener("click",()=>setTempo(metroBpm+5));
+    $("tempo-reset").addEventListener("click",()=>setTempo(60));
+    document.querySelectorAll('[name="meter"]').forEach(el=>el.addEventListener("change",()=>{
+      if(el.checked){metroMeter=Number(el.value);drawBeatLights();if(metroPlaying)restartMetroClock();}
+    }));
+    document.querySelectorAll('[name="click-tone"]').forEach(el=>el.addEventListener("change",()=>{
+      if(el.checked){metroSound=el.value;if(metroPlaying)restartMetroClock();}
+    }));
+    $("metro-start").addEventListener("click",toggleMetronome);
+    document.addEventListener("visibilitychange",()=>{
+      if(!document.hidden&&metroPlaying){
+        // A backgrounded tab may throttle timers; realign the next beat on return.
+        restartMetroClock();
+      }
+    });
+    drawBeatLights();setTempo(metroBpm);
+  </script>
+</body>
+</html>
