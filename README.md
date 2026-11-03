@@ -1,4 +1,3 @@
-</> Markdown
 
 # 🎸 Guitar Practice Trainer
 
